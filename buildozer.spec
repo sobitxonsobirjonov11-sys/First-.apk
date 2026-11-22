@@ -1,0 +1,23 @@
+[app]
+title = Seller Hub
+package.name = sellerhub
+package.domain = org.sellerhub.app
+
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,json
+
+version = 1.1.0
+requirements = python3,kivy,requests,urllib3,certifi,charset-normalizer,idna,pyjnius,android
+
+orientation = portrait
+fullscreen = 0
+
+android.permissions = INTERNET,ACCESS_NETWORK_STATE
+android.api = 33
+android.minapi = 21
+android.accept_sdk_license = True
+android.archs = arm64-v8a
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
