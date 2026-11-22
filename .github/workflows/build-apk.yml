@@ -1,0 +1,42 @@
+name: Build Seller Hub APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodni yuklab olish
+        uses: actions/checkout@v4
+
+      - name: Python va tizim kutubxonalarini o'rnatish
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-pip python3-setuptools git zip unzip openjdk-17-jdk \
+            autoconf libtool pkg-config zlib1g-dev libncurses5-dev \
+            libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+          pip3 install --user --upgrade buildozer cython==0.29.36 virtualenv
+
+      - name: Keshni tiklash (keyingi buildlar tez ishlashi uchun)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            ~/.gradle
+          key: buildozer-arm64-${{ hashFiles('buildozer.spec') }}
+
+      - name: APK yig'ish
+        run: |
+          export PATH="$PATH:~/.local/bin"
+          buildozer android debug
+
+      - name: Tayyor APK ni yuklab olishga chiqarish
+        uses: actions/upload-artifact@v4
+        with:
+          name: seller-hub-apk
+          path: bin/*.apk
