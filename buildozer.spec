@@ -7,7 +7,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,json
 
 version = 1.1.0
-requirements = python3,kivy,requests,urllib3,certifi,charset-normalizer,idna,pyjnius
+requirements = python3,kivy,requests,pyjnius
 
 orientation = portrait
 fullscreen = 0
