@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -17,10 +17,10 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y \
-            python3-pip python3-setuptools git zip unzip openjdk-17-jdk \
+            python3-pip python3-setuptools python3-dev git zip unzip openjdk-17-jdk \
             autoconf libtool pkg-config zlib1g-dev libncurses5-dev \
             libncursesw5-dev cmake libffi-dev libssl-dev
-          pip3 install --user --break-system-packages --upgrade buildozer cython==0.29.36 virtualenv
+          pip3 install --user --break-system-packages --upgrade buildozer "cython<3.1" virtualenv setuptools
 
       - name: Cache buildozer and gradle
         uses: actions/cache@v4
@@ -28,7 +28,7 @@ jobs:
           path: |
             ~/.buildozer
             ~/.gradle
-          key: buildozer-arm64-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-u24-arm64-${{ hashFiles('buildozer.spec') }}
 
       - name: Build APK with Buildozer
         run: |
