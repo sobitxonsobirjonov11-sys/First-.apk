@@ -28,12 +28,17 @@ jobs:
           path: |
             ~/.buildozer
             ~/.gradle
-          key: buildozer-clean-u24-arm64-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-u24-arm64-${{ hashFiles('buildozer.spec') }}
 
       - name: Build APK with Buildozer
         run: |
           export PATH="$PATH:~/.local/bin"
-          buildozer android debug
+          set -o pipefail
+          buildozer android debug > build.log 2>&1 || {
+            echo "=== XATO CHIQQAN OXIRGI 45 QATOR ==="
+            tail -n 45 build.log
+            exit 1
+          }
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
