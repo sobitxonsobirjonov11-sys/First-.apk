@@ -34,9 +34,9 @@ jobs:
         run: |
           export PATH="$PATH:~/.local/bin"
           set -o pipefail
-          buildozer android debug > build.log 2>&1 || {
-            echo "=== XATO CHIQQAN OXIRGI 45 QATOR ==="
-            tail -n 45 build.log
+          buildozer android debug 2>&1 | tee build.log || {
+            echo "=== XATO CHIQQAN OXIRGI 40 QATOR ==="
+            tail -n 40 build.log
             exit 1
           }
 
