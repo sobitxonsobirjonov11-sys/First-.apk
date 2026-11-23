@@ -33,7 +33,14 @@ jobs:
       - name: Build APK with Buildozer
         run: |
           export PATH="$PATH:~/.local/bin"
-          buildozer android debug 2>&1 | tee build.log
+          set -o pipefail
+          buildozer android debug 2>&1 | tee build.log || {
+            echo "=== BUILD FAILED (OXIRGI 50 QATOR) ==="
+            tail -n 50 build.log
+            exit 1
+          }
+          echo "=== BIN PAPKA TARKIBI ==="
+          ls -la bin/ || true
 
       - name: Upload build log on failure
         if: failure()
