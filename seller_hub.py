@@ -28,6 +28,14 @@ FEEDBACK_CHAT_ID = os.getenv("FEEDBACK_CHAT_ID", "-1004304501846").strip()
 # Foydalanuvchi lokal ma'lumotlari va versiya keshi fayllari
 DATA_FILE = "local_seller_data.json"
 VERSION_CACHE_FILE = "version_cache.json"
+def configure_storage_dir(directory: str) -> None:
+  global DATA_FILE, VERSION_CACHE_FILE
+  if not directory:
+    return
+  os.makedirs(directory, exist_ok=True)
+  DATA_FILE = os.path.join(directory, "local_seller_data.json")
+  VERSION_CACHE_FILE = os.path.join(directory, "version_cache.json")
+
 OFFLINE_GRACE_SECONDS = 86400  # 24 soat
 
 GEMINI_URL = (
