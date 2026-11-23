@@ -1,6 +1,8 @@
+import io
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from kivy.app import App
@@ -33,9 +35,7 @@ class WebViewHolder(BoxLayout):
         if platform == "android":
             threading.Thread(target=self._wait_for_backend, daemon=True).start()
         else:
-            self.add_widget(
-                Label(text=f"Brauzerda oching: {BACKEND_URL}")
-            )
+            self.add_widget(Label(text=f"Brauzerda oching: {BACKEND_URL}"))
 
     def _wait_for_backend(self):
         for _ in range(150):
@@ -62,12 +62,29 @@ class WebViewHolder(BoxLayout):
             return
 
         from android.runnable import run_on_ui_thread
-        from jnius import autoclass
+        from jnius import PythonJavaClass, autoclass, java_method
 
         PythonActivity = autoclass("org.kivy.android.PythonActivity")
         WebView = autoclass("android.webkit.WebView")
-        WebViewClient = autoclass("android.webkit.WebViewClient")
         WebChromeClient = autoclass("android.webkit.WebChromeClient")
+        WebViewClient = autoclass("android.webkit.WebViewClient")
+        WebResourceResponse = autoclass("android.webkit.WebResourceResponse")
+        ByteArrayInputStream = autoclass("java.io.ByteArrayInputStream")
+
+        class LocalInterceptorClient(PythonJavaClass):
+            __javainterfaces__ = ["android/webkit/WebViewClient"]
+            __javacontext__ = "app"
+
+            @java_method("(Landroid/webkit/WebView;Landroid/webkit/WebResourceRequest;)Landroid/webkit/WebResourceResponse;", name="shouldInterceptRequest")
+            def shouldInterceptRequest_req(self, view, request):
+                url_str = request.getUrl().toString()
+                parsed = urllib.parse.urlparse(url_str)
+                if parsed.hostname in ("127.0.0.1", "localhost") and parsed.port == BACKEND_PORT:
+                    if parsed.path in ("", "/"):
+                        raw = seller_hub.APP_HTML.encode("utf-8")
+                        stream = ByteArrayInputStream(raw)
+                        return WebResourceResponse("text/html", "utf-8", stream)
+                return None
 
         @run_on_ui_thread
         def attach_webview():
@@ -76,7 +93,8 @@ class WebViewHolder(BoxLayout):
             settings = webview.getSettings()
             settings.setJavaScriptEnabled(True)
             settings.setDomStorageEnabled(True)
-            webview.setWebViewClient(WebViewClient())
+            settings.setMixedContentMode(0)
+            webview.setWebViewClient(LocalInterceptorClient())
             webview.setWebChromeClient(WebChromeClient())
             activity.setContentView(webview)
             webview.loadUrl(BACKEND_URL)
