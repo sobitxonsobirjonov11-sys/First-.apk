@@ -1,57 +1,44 @@
-name: Build Seller Hub APK
+name: Build A32 Smart Launcher APK
 
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
-
-permissions:
-  contents: read
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
       - name: Install system dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y \
-            python3-pip python3-setuptools python3-dev python3-venv git \
-            zip unzip autoconf libtool libltdl-dev pkg-config zlib1g-dev \
-            libncurses-dev cmake libffi-dev libssl-dev
-          python3 -m pip install --user --break-system-packages --upgrade \
-            buildozer "cython<3.1" virtualenv setuptools
+            python3-pip python3-setuptools python3-dev git zip unzip openjdk-17-jdk \
+            autoconf libtool pkg-config zlib1g-dev libncurses5-dev \
+            libncursesw5-dev cmake libffi-dev libssl-dev
+          pip3 install --user --break-system-packages --upgrade buildozer "cython<3.1" virtualenv setuptools
 
-      - name: Cache Buildozer and Gradle
+      - name: Cache buildozer and gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer
             ~/.gradle
-          key: buildozer-u24-arm64-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-u24-arm64-
+          key: buildozer-a32-arm64-${{ hashFiles('buildozer.spec') }}
 
-      - name: Check Python syntax
-        run: python3 -m py_compile main.py seller_hub.py
-
-      - name: Build debug APK
+      - name: Build APK with Buildozer
         run: |
-          export PATH="$PATH:$HOME/.local/bin"
+          export PATH="$PATH:~/.local/bin"
           set -o pipefail
-          buildozer android debug 2>&1 | tee build.log
-          test -n "$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          buildozer android debug 2>&1 | tee build.log || {
+            echo "=== ANIQLANGAN XATO QATORLARI ==="
+            grep -i -E "command failed|error:|exception|traceback|no such file|permission denied|not found|failed" build.log | tail -n 30 || true
+            exit 1
+          }
 
       - name: Upload build log on failure
         if: failure()
@@ -59,12 +46,10 @@ jobs:
         with:
           name: build-log
           path: build.log
-          if-no-files-found: ignore
 
-      - name: Upload APK
+      - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: seller-hub-apk
+          name: a32-smart-launcher-apk
           path: bin/*.apk
-          if-no-files-found: error
