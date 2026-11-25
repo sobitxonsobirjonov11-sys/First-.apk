@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Galaxy A32 Smart Launcher</title>
+<style>
+  :root {
+    --bg-wall: radial-gradient(circle at 50% 25%, #f7e6d4 0%, #d8b59c 45%, #8e6c5a 100%);
+    --text-main: #ffffff;
+  }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0b0f17;
+    color: var(--text-main);
+  }
+
+  #wallpaper {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-wall);
+    background-size: cover;
+    background-position: center;
+    transition: filter 0.25s ease, transform 0.25s ease;
+    z-index: 0;
+  }
+  #wallpaper.blurred {
+    filter: blur(22px) brightness(0.72);
+    transform: scale(1.08);
+  }
+
+  .screen {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px 16px 12px;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+  }
+  .anim-smooth .screen { transition: opacity 0.25s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+  .anim-snappy .screen { transition: opacity 0.12s linear, transform 0.14s ease-out; }
+  .anim-zoom .screen.hidden { transform: scale(1.06); }
+
+  .hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: scale(0.97);
+  }
+
+  /* Top mode bar */
+  .top-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .mode-bar {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+  }
+  .mode-bar::-webkit-scrollbar { display: none; }
+  .pill {
+    padding: 6px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    white-space: nowrap;
+  }
+  .pill.active { background: #2563eb; border-color: #60a5fa; }
+  .pill.pro-pill { background: linear-gradient(135deg, #f59e0b, #d97706); border-color: #fde68a; color: #111; }
+  .pill.danger { background: rgba(220, 38, 38, 0.8); }
+
+  /* Weather / Clock Widget */
+  .weather-widget {
+    background: rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 24px;
+    padding: 16px 18px;
+    margin-top: auto;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  }
+  .w-top { display: flex; justify-content: space-between; font-size: 13px; opacity: 0.95; }
+  .w-mid { display: flex; justify-content: space-between; align-items: center; margin: 4px 0; }
+  .clock-big { font-size: 46px; font-weight: 300; letter-spacing: -1px; }
+  .temp-big { font-size: 38px; font-weight: 400; display: flex; align-items: center; gap: 6px; }
+  .w-bot { text-align: right; font-size: 11px; opacity: 0.9; }
+
+  /* Grid & Squircle Icons */
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 10px; }
+  .app-item { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+  .app-item.dimmed { filter: grayscale(1) opacity(0.45); }
+  .squircle {
+    width: 58px;
+    height: 58px;
+    border-radius: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    position: relative;
+  }
+  .app-item:active .squircle { transform: scale(0.92); }
+  .app-label {
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.15;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+    max-width: 74px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .lock-badge {
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    background: #111827;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .dock { margin-top: 16px; padding-bottom: 6px; }
+
+  /* Clean App Drawer Search (no extra bars above it) */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(14px);
+    border-radius: 999px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+  }
+  .search-bar input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: none;
+    color: #fff;
+    font-size: 16px;
+  }
+  .search-bar input::placeholder { color: rgba(255, 255, 255, 0.78); }
+
+  .pages-viewport { flex: 1; overflow: hidden; position: relative; }
+  .pages-track {
+    display: flex;
+    width: 200%;
+    height: 100%;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .pages-track.vertical {
+    flex-direction: column;
+    width: 100%;
+    height: 200%;
+  }
+  .drawer-page { width: 50%; height: 100%; padding: 4px 2px; }
+  .pages-track.vertical .drawer-page { width: 100%; height: 50%; }
+
+  .page-dots { display: flex; justify-content: center; gap: 8px; padding: 10px 0 4px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
+  .dot.active { background: #fff; transform: scale(1.2); }
+
+  /* Quick Settings Panel (pulled down from top) */
+  #quickPanel {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 25;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(18px);
+    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 28px;
+    padding: 18px 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    transform: translateY(-100%);
+    transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #quickPanel.open { transform: translateY(0); }
+  .qs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .qs-tile {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .qs-tile.on { background: #2563eb; border-color: #60a5fa; }
+
+  /* Senior / Easy Mode */
+  .senior-wrap { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 6px 0; }
+  .senior-card {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 16px;
+  }
+  .senior-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .senior-btn {
+    padding: 18px 12px;
+    border-radius: 18px;
+    border: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Modals */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-box {
+    width: 100%;
+    max-width: 410px;
+    max-height: 86vh;
+    overflow-y: auto;
+    background: #1e293b;
+    border-radius: 24px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  .modal-box h3 { margin-bottom: 10px; font-size: 18px; }
+  .inp, select {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 12px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: #fff;
+    font-size: 15px;
+    margin: 6px 0;
+  }
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: 0;
+    background: #2563eb;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .btn.sec { background: #334155; }
+  .btn.pro { background: linear-gradient(135deg, #f59e0b, #d97706); color: #111; }
+
+  .hide-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .toggle-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .toggle-pill.is-hidden { background: #dc2626; color: #fff; }
+  .toggle-pill.is-visible { background: #16a34a; color: #fff; }
+
+  /* Boot splash */
+  #bootSplash {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: #090d16;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: opacity 0.45s ease;
+  }
+  #bootSplash.fade-out { opacity: 0; pointer-events: none; }
+
+  #toast {
+    position: fixed;
+    bottom: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.94);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    z-index: 55;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="bootSplash">
+  <div style="font-size:44px;">⚡</div>
+  <div style="font-size:20px; font-weight:700; letter-spacing:0.5px;">A32 SMART LAUNCHER</div>
+  <div id="bootAnimLabel" style="font-size:12px; color:#94a3b8;">Ishchi stol tayyorlanmoqda...</div>
+</div>
+
+<div id="wallpaper"></div>
+
+<!-- QUICK PANEL (TOP PULL-DOWN) -->
+<div id="quickPanel">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <b>Tezkor panel</b>
+    <button class="pill" onclick="toggleQuickPanel(false)">Yopish ✕</button>
+  </div>
+  <div class="qs-grid">
+    <div class="qs-tile on" id="qsWifi" onclick="toggleTile('wifi')">📶 Wi-Fi</div>
+    <div class="qs-tile on" id="qsData" onclick="toggleTile('data')">📡 Mobil net</div>
+    <div class="qs-tile" id="qsFlash" onclick="toggleTile('flash')">🔦 Chiroq</div>
+    <div class="qs-tile" id="qsFocus" onclick="toggleFocus()">🎯 Fokus</div>
+    <div class="qs-tile" onclick="toggleQuickPanel(false); openSecretSettings();">⚙️ Sozlamalar</div>
+    <div class="qs-tile" onclick="toggleQuickPanel(false); captureScreenshot('Tezkor panel');">📸 Skrinshot</div>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button class="btn sec" style="margin:0;" onclick="toggleQuickPanel(false); openCustomize();">🎨 Ko‘rinish</button>
+    <button class="btn pro" style="margin:0;" onclick="toggleQuickPanel(false); openProModal();">⭐ Pro $1.5</button>
+  </div>
+</div>
+
+<!-- HOME SCREEN -->
+<div id="homeScreen" class="screen">
+  <div>
+    <div class="top-strip">
+      <div class="mode-bar">
+        <button class="pill active" id="pillNormal" onclick="setMode('normal')">🏠 Oddiy</button>
+        <button class="pill" id="pillFocus" onclick="toggleFocus()">🎯 Fokus</button>
+        <button class="pill" id="pillKids" onclick="setMode('kids')">🧸 Bolalar</button>
+        <button class="pill" id="pillSenior" onclick="setMode('senior')">👓 Oson</button>
+        <button class="pill" onclick="openCustomize()">🎨 Stol</button>
+        <button class="pill pro-pill" id="pillPro" onclick="openProModal()">⭐ Pro $1.5</button>
+      </div>
+      <button class="pill" onclick="toggleQuickPanel(true)">▾</button>
+    </div>
+    <div id="focusBanner" class="pill danger hidden" style="margin-top:8px; display:inline-block;">
+      🎯 Fokus rejimida chalg‘ituvchi ilovalar o‘chirilgan
+    </div>
+  </div>
+
+  <!-- Standard / Kids Home Content -->
+  <div id="standardHome">
+    <div class="weather-widget" id="weatherWidget">
+      <div class="w-top">
+        <span>Chor, 25-noyabr</span>
+        <span>📍 Янгиқўрғон</span>
+      </div>
+      <div class="w-mid">
+        <div class="clock-big" id="clockStr">16:47</div>
+        <div class="temp-big">⛅ 17°</div>
+      </div>
+      <div class="w-bot">Nurlanish indeksi : Past &nbsp; 15:03 ↻</div>
+    </div>
+
+    <div class="grid-4" id="homeFavGrid"></div>
+
+    <div class="dock grid-4">
+      <div class="app-item" onclick="openAppById('phone')">
+        <div class="squircle" style="background:#16a34a">📞</div>
+        <div class="app-label">Telefon</div>
+      </div>
+      <div class="app-item" id="homeBtnItem"
+           onmousedown="startHomeHold()" onmouseup="endHomeHold()" onmouseleave="cancelHomeHold()"
+           ontouchstart="startHomeHold()" ontouchend="endHomeHold()" ontouchcancel="cancelHomeHold()">
+        <div class="squircle" style="background:#2563eb">⌂</div>
+        <div class="app-label">Home / AI</div>
+      </div>
+      <div class="app-item" onclick="openAppById('messages')">
+        <div class="squircle" style="background:#0284c7">💬</div>
+        <div class="app-label">Xabarlar</div>
+      </div>
+      <div class="app-item" onclick="openDrawer()">
+        <div class="squircle" style="background:rgba(71,85,105,0.8)">⠿</div>
+        <div class="app-label">Ilovalar</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Senior / Easy Mode Content -->
+  <div id="seniorHome" class="senior-wrap hidden">
+    <div class="senior-card">
+      <div style="font-size:15px; opacity:0.8;">Bugun • Янгиқўрғон</div>
+      <div style="font-size:44px; font-weight:700;" id="seniorClock">16:47</div>
+    </div>
+
+    <div class="senior-card">
+      <div style="font-size:17px; font-weight:700; margin-bottom:10px;">💊 Kunlik dori eslatmasi</div>
+      <button id="medBtn" class="btn" style="font-size:17px; padding:14px;" onclick="toggleMed()">
+        Ertalabki dori: Ichilmadi (Belgilash)
+      </button>
+    </div>
+
+    <div class="senior-grid">
+      <button class="senior-btn" style="background:#16a34a" onclick="dial('+998901234567')">
+        <span style="font-size:32px;">👨</span> O‘g‘limga qo‘ng‘iroq
+      </button>
+      <button class="senior-btn" style="background:#db2777" onclick="dial('+998907654321')">
+        <span style="font-size:32px;">👩</span> Qizimga qo‘ng‘iroq
+      </button>
+      <button class="senior-btn" style="background:#dc2626" onclick="dial('103')">
+        <span style="font-size:32px;">🚑</span> Tez yordam (103)
+      </button>
+      <button class="senior-btn" style="background:#2563eb" onclick="openDrawer()">
+        <span style="font-size:32px;">📱</span> Barcha ilovalar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- APP DRAWER -->
+<div id="drawerScreen" class="screen hidden">
+  <div class="search-bar">
+    <input id="searchInput" placeholder="Qidirish" oninput="renderDrawer()" onkeydown="handleSearchKey(event)">
+  </div>
+
+  <div class="pages-viewport" id="swipeZone">
+    <div class="pages-track" id="pagesTrack">
+      <div class="drawer-page"><div class="grid-4" id="page0Grid"></div></div>
+      <div class="drawer-page"><div class="grid-4" id="page1Grid"></div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="page-dots">
+      <div class="dot active" id="dot0"></div>
+      <div class="dot" id="dot1"></div>
+    </div>
+    <div style="text-align:center; margin-top:6px;">
+      <button class="pill" onclick="closeDrawer()">⬆ Bosh ekranga qaytish</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMIZE MODAL (WIDGET, APPS, WALLPAPER, ANIMATION, SCROLL DIRECTION) -->
+<div id="customModal" class="modal-bg hidden">
+  <div class="modal-box">
+    <h3>🎨 Ishchi stolni sozlash</h3>
+
+    <label style="font-size:13px; font-weight:600;">Ob-havo vidjeti:</label>
+    <select id="cfgWidget">
+      <option value="1">Ko‘rsatilsin</option>
+      <option value="0">Yashirilsin</option>
+    </select>
+
+    <label style="font-size:13px; font-weight:600;">Sahifa surish yo‘nalishi:</label>
+    <select id="cfgScroll" onchange="onScrollOptionChange()">
+      <option value="horizontal">Gorizontal (O‘ngga / Chapga)</option>
+      <option value="vertical">Vertikal — Redmi uslubi (Tepaga / Pastga — Pro)</option>
+    </select>
+
+    <label style="font-size:13px; font-weight:600;">Ekran animatsiyasi:</label>
+    <select id="cfgAnim">
+      <option value="smooth">Silliq (One UI)</option>
+      <option value="snappy">Tezkor keskin</option>
+      <option value="zoom">Kengayuvchi (Pro)</option>
+    </select>
+
+    <label style="font-size:13px; font-weight:600;">Fon rasmi yuklash:</label>
+    <input type="file" accept="image/*" class="inp" onchange="uploadWallpaper(event)">
+
+    <div style="font-size:13px; font-weight:700; margin-top:8px;">Bosh ekrandagi ilovalar:</div>
+    <div id="homeAppsChecklist"></div>
+
+    <button class="btn" onclick="saveCustomize()">Saqlash</button>
+    <button class="btn sec" onclick="closeModals()">Yopish</button>
+  </div>
+</div>
+
+<!-- DECOY / FAKE APP SETTINGS (HIDES SECRET APPS) -->
+<div id="fakeSettingsModal" class="modal-bg hidden">
+  <div class="modal-box">
+    <h3>⚙️ Ilova sozlamalari</h3>
+    <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">
+      O‘rnatilgan ilovalar ro‘yxati (yashirin ilovalar ko‘rinmaydi)
+    </p>
+    <div id="fakeAppsList"></div>
+    <button class="btn sec" style="margin-top:12px;" onclick="closeModals()">Yopish</button>
+  </div>
+</div>
+
+<!-- SECRET VAULT MODAL -->
+<div id="vaultModal" class="modal-bg hidden">
+  <div class="modal-box">
+    <h3>🕵️ Yashirin ilovalar va Maxfiy Seif</h3>
+    <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">
+      Yashirilgan ilovalar bosh ekran, menyu, qidiruv va soxta Ilova sozlamalarida ko‘rinmaydi.
+    </p>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:13px; font-weight:600;">Maxfiy PIN-kod:</label>
+      <div style="display:flex; gap:8px;">
+        <input id="newPinInput" class="inp" type="password" inputmode="numeric" placeholder="Yangi PIN (masalan 1234)">
+        <button class="btn" style="width:auto; padding:0 14px;" onclick="saveNewPin()">Saqlash</button>
+      </div>
+    </div>
+    <div id="hideAppsList"></div>
+    <button class="btn" style="margin-top:12px;" onclick="closeModals()">Yopish</button>
+  </div>
+</div>
+
+<!-- PRO $1.5 MODAL -->
+<div id="proModal" class="modal-bg hidden">
+  <div class="modal-box">
+    <h3>⭐ A32 Smart Launcher Pro — $1.5</h3>
+    <p style="font-size:13px; color:#cbd5e1; line-height:1.45; margin-bottom:10px;">
+      • Redmi uslubida tepaga/pastga vertikal sahifalash<br>
+      • Fokus rejimida chalg‘ituvchi ilovalarni 100% o‘chirish/yashirish<br>
+      • Kengayuvchi ekran animatsiyalari va kengaytirilgan sozlamalar
+    </p>
+    <div id="proStatusText" style="font-size:13px; font-weight:700; margin-bottom:8px;"></div>
+    <button class="btn pro" onclick="activatePro(true)">Pro obunani faollashtirish ($1.5)</button>
+    <button class="btn sec" onclick="activatePro(false)">Bepul rejimga qaytish</button>
+    <button class="btn sec" onclick="closeModals()">Yopish</button>
+  </div>
+</div>
+
+<!-- SCREENSHOT PREVIEW MODAL -->
+<div id="shotModal" class="modal-bg hidden">
+  <div class="modal-box">
+    <h3>📸 Ekran rasmi olindi</h3>
+    <p id="shotMeta" style="font-size:12px; color:#94a3b8; margin-bottom:10px;"></p>
+    <canvas id="shotCanvas" style="width:100%; border-radius:14px; border:1px solid #475569;"></canvas>
+    <button class="btn" onclick="closeModals()">Tayyor</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const ALL_APPS = [
+  { id: 'google', name: 'Google', icon: 'G', color: '#3b82f6', pkg: 'com.google.android.googlequicksearchbox', page: 0, kids: true, distractor: false },
+  { id: 'arzone', name: 'AR Zone', icon: 'AR', color: '#312e81', pkg: 'com.samsung.android.arzone', page: 0, kids: true, distractor: false },
+  { id: 'dubmusic', name: 'Dub Music Player', icon: '🎧', color: '#0f172a', pkg: 'hr.palamida', page: 0, kids: false, distractor: true },
+  { id: 'files', name: 'Fayllarim', icon: '📁', color: '#f59e0b', pkg: 'com.sec.android.app.myfiles', page: 0, kids: false, distractor: false },
+  { id: 'galaxystore', name: 'Galaxy Store', icon: '🛍️', color: '#ec4899', pkg: 'com.sec.android.app.samsungapps', page: 0, kids: false, distractor: false },
+  { id: 'gallery', name: 'Galereya', icon: '🌺', color: '#db2777', pkg: 'com.sec.android.gallery3d', page: 0, kids: true, distractor: false, home: true },
+  { id: 'calendar', name: 'Kalendar', icon: '25', color: '#0284c7', pkg: 'com.samsung.android.calendar', page: 0, kids: true, distractor: false, home: true },
+  { id: 'camera', name: 'Kamera', icon: '📷', color: '#e11d48', pkg: 'com.sec.android.app.camera', page: 0, kids: true, distractor: false },
+  { id: 'contacts', name: 'Kontaktlar', icon: '👤', color: '#ea580c', pkg: 'com.samsung.android.app.contacts', page: 0, kids: false, distractor: false },
+  { id: 'onedrive', name: 'OneDrive', icon: '☁️', color: '#0369a1', pkg: 'com.microsoft.skydrive', page: 0, kids: false, distractor: false },
+  { id: 'settings', name: 'Parametrlar', icon: '⚙️', color: '#334155', pkg: 'com.android.settings', page: 0, kids: false, distractor: false },
+  { id: 'plus', name: 'Plus', icon: '⊕', color: '#0d9488', pkg: 'org.telegram.plus', page: 0, kids: false, distractor: true, home: true },
+  { id: 'radio', name: 'Radio', icon: '📻', color: '#7e22ce', pkg: 'com.sec.android.app.fm', page: 0, kids: false, distractor: false },
+  { id: 'samsungfree', name: 'Samsung Free', icon: 'FREE', color: '#ef4444', pkg: 'com.samsung.android.app.spage', page: 0, kids: false, distractor: true },
+  { id: 'clock', name: 'Soat', icon: '🕒', color: '#4f46e5', pkg: 'com.sec.android.app.clockpackage', page: 0, kids: false, distractor: false, home: true },
+  { id: 'phone', name: 'Telefon', icon: '📞', color: '#16a34a', pkg: 'com.samsung.android.dialer', page: 0, kids: false, distractor: false },
+  { id: 'telegram', name: 'Telegram', icon: '✈️', color: '#0ea5e9', pkg: 'org.telegram.messenger', page: 0, kids: false, distractor: true },
+  { id: 'ucell', name: 'Ucell', icon: '2', color: '#1d4ed8', pkg: 'uz.ucell.cabinet', page: 0, kids: false, distractor: false },
+  { id: 'messages', name: 'Xabarlar', icon: '💬', color: '#2563eb', pkg: 'com.samsung.android.messaging', page: 0, kids: false, distractor: false },
+  { id: 'gmessages', name: 'Xabarlar (G)', icon: '🗨️', color: '#1e40af', pkg: 'com.google.android.apps.messaging', page: 0, kids: false, distractor: false },
+  { id: 'maps', name: 'Xaritalar', icon: '📍', color: '#10b981', pkg: 'com.google.android.apps.maps', page: 1, kids: false, distractor: false },
+  { id: 'youtube', name: 'YouTube', icon: '▶️', color: '#dc2626', pkg: 'com.google.android.youtube', page: 1, kids: true, distractor: true }
+];
+
+let state = JSON.parse(localStorage.getItem('a32_smart_state_v2') || 'null') || {
+  pin: '1234',
+  isPro: false,
+  hiddenIds: ['dubmusic'],
+  homeIds: ['gallery', 'calendar', 'plus', 'clock'],
+  showWidget: true,
+  scrollDir: 'horizontal',
+  animStyle: 'smooth',
+  mode: 'normal',
+  focus: false,
+  medTaken: false,
+  wallpaper: ''
+};
+
+let currentPage = 0;
+let homeHoldTimer = null;
+let homeLongTriggered = false;
+
+function saveState() {
+  localStorage.setItem('a32_smart_state_v2', JSON.stringify(state));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('clockStr').innerText = `${hh}:${mm}`;
+  document.getElementById('seniorClock').innerText = `${hh}:${mm}`;
+}
+setInterval(updateClock, 5000);
+updateClock();
+
+function applyVisualSettings() {
+  document.body.className = `anim-${state.animStyle}`;
+  const w = document.getElementById('wallpaper');
+  if (state.wallpaper) w.style.backgroundImage = `url(${state.wallpaper})`;
+
+  document.getElementById('weatherWidget').style.display = state.showWidget ? 'block' : 'none';
+  document.getElementById('pillPro').innerText = state.isPro ? '⭐ Pro faol' : '⭐ Pro $1.5';
+
+  const track = document.getElementById('pagesTrack');
+  track.classList.toggle('vertical', state.isPro && state.scrollDir === 'vertical');
+  goToPage(currentPage);
+}
+
+function renderHome() {
+  applyVisualSettings();
+  document.getElementById('pillNormal').classList.toggle('active', state.mode === 'normal');
+  document.getElementById('pillKids').classList.toggle('active', state.mode === 'kids');
+  document.getElementById('pillSenior').classList.toggle('active', state.mode === 'senior');
+  document.getElementById('pillFocus').classList.toggle('active', state.focus);
+  document.getElementById('focusBanner').classList.toggle('hidden', !state.focus);
+
+  document.getElementById('standardHome').classList.toggle('hidden', state.mode === 'senior');
+  document.getElementById('seniorHome').classList.toggle('hidden', state.mode !== 'senior');
+
+  const medBtn = document.getElementById('medBtn');
+  medBtn.innerText = state.medTaken ? '✅ Ertalabki dori: Ichildi' : '💊 Ertalabki dori: Ichilmadi (Belgilash)';
+  medBtn.style.background = state.medTaken ? '#16a34a' : '#2563eb';
+
+  const favGrid = document.getElementById('homeFavGrid');
+  favGrid.innerHTML = '';
+  const favApps = ALL_APPS.filter(a => {
+    if (!state.homeIds.includes(a.id)) return false;
+    if (state.hiddenIds.includes(a.id)) return false;
+    if (state.mode === 'kids' && !a.kids) return false;
+    if (state.focus && state.isPro && a.distractor) return false;
+    return true;
+  });
+  favApps.forEach(app => favGrid.appendChild(createAppNode(app)));
+}
+
+function createAppNode(app) {
+  const blockedByFocus = state.focus && app.distractor;
+  const div = document.createElement('div');
+  div.className = 'app-item' + (blockedByFocus ? ' dimmed' : '');
+  div.onclick = () => openApp(app);
+  div.innerHTML = `
+    <div class="squircle" style="background:${app.color}">
+      ${app.icon}
+      ${blockedByFocus ? '<div class="lock-badge">⛔</div>' : ''}
+    </div>
+    <div class="app-label">${app.name}</div>
+  `;
+  return div;
+}
+
+function renderDrawer() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const visibleApps = ALL_APPS.filter(a => {
+    if (state.hiddenIds.includes(a.id)) return false;
+    if (state.mode === 'kids' && !a.kids) return false;
+    if (state.focus && state.isPro && a.distractor) return false;
+    if (q && !a.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const p0 = document.getElementById('page0Grid');
+  const p1 = document.getElementById('page1Grid');
+  p0.innerHTML = '';
+  p1.innerHTML = '';
+
+  if (q) {
+    visibleApps.forEach(a => p0.appendChild(createAppNode(a)));
+    goToPage(0);
+  } else {
+    visibleApps.forEach(a => {
+      (a.page === 0 ? p0 : p1).appendChild(createAppNode(a));
+    });
+  }
+}
+
+function openAppById(id) {
+  const app = ALL_APPS.find(a => a.id === id);
+  if (app) openApp(app);
+}
+
+function openApp(app) {
+  if (state.focus && app.distractor) {
+    showToast(`⛔ Fokus rejimida ${app.name} o‘chirilgan`);
+    return;
+  }
+  if (app.id === 'settings') {
+    openSecretSettings();
+    return;
+  }
+  if (window.AndroidBridge && window.AndroidBridge.launchApp) {
+    const ok = window.AndroidBridge.launchApp(app.pkg);
+    if (!ok) showToast(`${app.name} ochilmoqda...`);
+  } else {
+    showToast(`${app.name} ishga tushirildi`);
+  }
+}
+
+function openSecretSettings() {
+  const entered = prompt('Maxfiy PIN-kodni kiriting (yoki bekor qilib oddiy sozlamaga kiring):');
+  if (entered && entered.trim() === state.pin) {
+    openVault();
+  } else {
+    openFakeSettings();
+  }
+}
+
+function openFakeSettings() {
+  const list = document.getElementById('fakeAppsList');
+  list.innerHTML = '';
+  ALL_APPS.filter(a => !state.hiddenIds.includes(a.id)).forEach(app => {
+    const row = document.createElement('div');
+    row.className = 'hide-row';
+    row.innerHTML = `<span>${app.icon} ${app.name}</span><span style="font-size:12px; color:#94a3b8;">Faol</span>`;
+    list.appendChild(row);
+  });
+  document.getElementById('fakeSettingsModal').classList.remove('hidden');
+}
+
+function openVault() {
+  document.getElementById('newPinInput').value = '';
+  const list = document.getElementById('hideAppsList');
+  list.innerHTML = '';
+  ALL_APPS.forEach(app => {
+    const isHidden = state.hiddenIds.includes(app.id);
+    const row = document.createElement('div');
+    row.className = 'hide-row';
+    row.innerHTML = `
+      <span>${app.icon} ${app.name}</span>
+      <button class="toggle-pill ${isHidden ? 'is-hidden' : 'is-visible'}" onclick="toggleHideApp('${app.id}')">
+        ${isHidden ? 'Yashirilgan' : 'Ko‘rinadi'}
+      </button>
+    `;
+    list.appendChild(row);
+  });
+  document.getElementById('vaultModal').classList.remove('hidden');
+}
+
+function toggleHideApp(id) {
+  if (state.hiddenIds.includes(id)) {
+    state.hiddenIds = state.hiddenIds.filter(x => x !== id);
+  } else {
+    state.hiddenIds.push(id);
+  }
+  saveState();
+  openVault();
+  renderHome();
+  renderDrawer();
+}
+
+function saveNewPin() {
+  const v = document.getElementById('newPinInput').value.trim();
+  if (v.length < 4) {
+    showToast('PIN kamida 4 ta belgidan iborat bo‘lsin');
+    return;
+  }
+  state.pin = v;
+  saveState();
+  showToast('✅ Maxfiy PIN yangilandi');
+}
+
+function dial(num) {
+  if (window.AndroidBridge && window.AndroidBridge.dialNumber) {
+    window.AndroidBridge.dialNumber(num);
+  } else {
+    showToast(`Qo‘ng‘iroq: ${num}`);
+  }
+}
+
+function openDrawer() {
+  document.getElementById('wallpaper').classList.add('blurred');
+  document.getElementById('homeScreen').classList.add('hidden');
+  document.getElementById('drawerScreen').classList.remove('hidden');
+  renderDrawer();
+}
+
+function closeDrawer() {
+  document.getElementById('wallpaper').classList.remove('blurred');
+  document.getElementById('drawerScreen').classList.add('hidden');
+  document.getElementById('homeScreen').classList.remove('hidden');
+  document.getElementById('searchInput').value = '';
+  renderHome();
+}
+
+function goToPage(idx) {
+  currentPage = idx;
+  const isVert = state.isPro && state.scrollDir === 'vertical';
+  document.getElementById('pagesTrack').style.transform = isVert
+    ? `translateY(-${idx * 50}%)`
+    : `translateX(-${idx * 50}%)`;
+  document.getElementById('dot0').classList.toggle('active', idx === 0);
+  document.getElementById('dot1').classList.toggle('active', idx === 1);
+}
+
+// Home button hold -> Google Gemini / Assistant
+function startHomeHold() {
+  homeLongTriggered = false;
+  homeHoldTimer = setTimeout(() => {
+    homeLongTriggered = true;
+    openGeminiOrAssistant();
+  }, 550);
+}
+function endHomeHold() {
+  clearTimeout(homeHoldTimer);
+  if (!homeLongTriggered) {
+    closeDrawer();
+    closeModals();
+  }
+}
+function cancelHomeHold() {
+  clearTimeout(homeHoldTimer);
+}
+function openGeminiOrAssistant() {
+  showToast('✨ Google Gemini / Assistant ochilmoqda...');
+  if (window.AndroidBridge && window.AndroidBridge.openAssistant) {
+    window.AndroidBridge.openAssistant();
+  } else {
+    window.open('https://gemini.google.com', '_blank');
+  }
+}
+
+// Swipe up on home -> open drawer; swipe left/right or up/down in drawer; 3-finger swipe down -> screenshot
+let gStartX = 0, gStartY = 0, gTouches = 0;
+document.addEventListener('touchstart', e => {
+  gTouches = e.touches.length;
+  gStartX = e.touches[0].clientX;
+  gStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  const endX = e.changedTouches[0].clientX;
+  const endY = e.changedTouches[0].clientY;
+  const dx = endX - gStartX;
+  const dy = endY - gStartY;
+
+  if (gTouches >= 3 && dy > 65) {
+    captureScreenshot('3 barmoq bilan pastga tortish');
+    gTouches = 0;
+    return;
+  }
+
+  const drawerVisible = !document.getElementById('drawerScreen').classList.contains('hidden');
+  if (!drawerVisible) {
+    if (gStartY < 55 && dy > 60) {
+      toggleQuickPanel(true);
+    } else if (dy < -75 && Math.abs(dy) > Math.abs(dx)) {
+      openDrawer();
+    }
+  } else {
+    const isVert = state.isPro && state.scrollDir === 'vertical';
+    if (!isVert) {
+      if (dx < -45 && currentPage === 0) goToPage(1);
+      if (dx > 45 && currentPage === 1) goToPage(0);
+    } else {
+      if (dy < -45 && currentPage === 0) goToPage(1);
+      if (dy > 45 && currentPage === 1) goToPage(0);
+    }
+  }
+  gTouches = 0;
+}, { passive: true });
+
+function captureScreenshot(sourceText) {
+  const canvas = document.getElementById('shotCanvas');
+  canvas.width = 360;
+  canvas.height = 640;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 360, 640);
+  grad.addColorStop(0, '#1e293b');
+  grad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 360, 640);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText('A32 Smart Launcher', 24, 60);
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText(`Manba: ${sourceText}`, 24, 92);
+  ctx.fillText(`Sana/Vaqt: ${new Date().toLocaleString()}`, 24, 116);
+  document.getElementById('shotMeta').innerText = `${sourceText} • ${new Date().toLocaleTimeString()}`;
+  document.getElementById('shotModal').classList.remove('hidden');
+  showToast('📸 Skrinshot olindi');
+}
+
+function toggleQuickPanel(open) {
+  document.getElementById('quickPanel').classList.toggle('open', open);
+}
+
+function toggleTile(name) {
+  const el = document.getElementById('qs' + name.charAt(0).toUpperCase() + name.slice(1));
+  if (el) el.classList.toggle('on');
+  showToast(`${name.toUpperCase()} holati o‘zgartirildi`);
+}
+
+function toggleFocus() {
+  state.focus = !state.focus;
+  saveState();
+  renderHome();
+  renderDrawer();
+  showToast(state.focus ? '🎯 Fokus rejimi yoqildi' : 'Fokus rejimi o‘chirildi');
+}
+
+function setMode(m) {
+  state.mode = m;
+  saveState();
+  renderHome();
+  renderDrawer();
+}
+
+function toggleMed() {
+  state.medTaken = !state.medTaken;
+  saveState();
+  renderHome();
+}
+
+function openCustomize() {
+  document.getElementById('cfgWidget').value = state.showWidget ? '1' : '0';
+  document.getElementById('cfgScroll').value = state.scrollDir;
+  document.getElementById('cfgAnim').value = state.animStyle;
+
+  const box = document.getElementById('homeAppsChecklist');
+  box.innerHTML = '';
+  ALL_APPS.forEach(app => {
+    const checked = state.homeIds.includes(app.id) ? 'checked' : '';
+    const row = document.createElement('label');
+    row.className = 'hide-row';
+    row.innerHTML = `<span>${app.icon} ${app.name}</span><input type="checkbox" data-hid="${app.id}" ${checked}>`;
+    box.appendChild(row);
+  });
+  document.getElementById('customModal').classList.remove('hidden');
+}
+
+function onScrollOptionChange() {
+  const v = document.getElementById('cfgScroll').value;
+  if (v === 'vertical' && !state.isPro) {
+    showToast('Vertikal (Redmi) surish Pro ($1.5) rejimida ishlaydi');
+  }
+}
+
+function saveCustomize() {
+  state.showWidget = document.getElementById('cfgWidget').value === '1';
+  state.scrollDir = document.getElementById('cfgScroll').value;
+  const chosenAnim = document.getElementById('cfgAnim').value;
+  if (chosenAnim === 'zoom' && !state.isPro) {
+    showToast('Kengayuvchi animatsiya Pro ($1.5) uchun');
+  } else {
+    state.animStyle = chosenAnim;
+  }
+  const checkedIds = Array.from(document.querySelectorAll('#homeAppsChecklist input:checked')).map(i => i.dataset.hid);
+  state.homeIds = checkedIds;
+  saveState();
+  closeModals();
+  renderHome();
+  showToast('✅ Stol sozlamalari saqlandi');
+}
+
+function uploadWallpaper(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.wallpaper = reader.result;
+    saveState();
+    applyVisualSettings();
+    showToast('✅ Fon rasmi yangilandi');
+  };
+  reader.readAsDataURL(file);
+}
+
+function openProModal() {
+  document.getElementById('proStatusText').innerText = state.isPro
+    ? 'Holat: ⭐ Pro ($1.5) faol'
+    : 'Holat: Bepul versiya';
+  document.getElementById('proModal').classList.remove('hidden');
+}
+
+function activatePro(active) {
+  state.isPro = active;
+  if (!active && state.scrollDir === 'vertical') state.scrollDir = 'horizontal';
+  if (!active && state.animStyle === 'zoom') state.animStyle = 'smooth';
+  saveState();
+  renderHome();
+  renderDrawer();
+  openProModal();
+  showToast(active ? '⭐ Pro ($1.5) faollashtirildi' : 'Bepul rejimga qaytdi');
+}
+
+function closeModals() {
+  ['customModal', 'fakeSettingsModal', 'vaultModal', 'proModal', 'shotModal'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+}
+
+function handleSearchKey(e) {
+  if (e.key === 'Enter') renderDrawer();
+}
+
+// Boot animation finish
+setTimeout(() => {
+  const splash = document.getElementById('bootSplash');
+  splash.classList.add('fade-out');
+  setTimeout(() => splash.remove(), 480);
+}, 750);
+
+renderHome();
+</script>
+</body>
+</html>
